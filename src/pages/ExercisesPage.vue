@@ -34,7 +34,7 @@
             label="Add Treino"
             icon="bi-plus-circle-dotted"
             color="positive"
-            @click="() => addTreino(item.id)"
+            @click="() => addExercise(item.id)"
             no-caps
             push
           />
@@ -47,7 +47,7 @@
 import { ref, onMounted, computed } from "vue";
 import { getData, getDetails } from "src/services/WgerService";
 import { useQuasar } from "quasar";
-import { useWishesStore } from "src/stores/wishesStore";
+import { useExerciseStorage } from "src/stores/exerciseStorage";
 
 const $q = useQuasar();
 const exercises = ref([]);
@@ -70,15 +70,14 @@ const fetchExercises = async () => {
   }
 };
 
-const wishes = useWishesStore();
+const exerciseStorage = useExerciseStorage();
 
-const addTreino = async (id) => {
-  console.log("🚀 ~ addTreino ~ id:", id);
-  wishes.storageWishesSave([...wishes.wishesData, id]);
+const addExercise = (id) => {
+  exerciseStorage.save([...exerciseStorage.data, id]);
 };
 
-const nro_treinos = computed(() => {
-  return wishes.wishesData.length;
+const exerciseCount = computed(() => {
+  return exerciseStorage.data.length;
 });
 
 onMounted(() => {
