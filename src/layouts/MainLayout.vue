@@ -6,9 +6,7 @@
       <q-toolbar class="px-4 lg:hidden">
         <q-btn flat dense round icon="menu" @click="toggleDrawer" />
         <q-toolbar-title class="lg:hidden">
-          <router-link>
-            <img src="assets/fitmind-logo.png" />
-          </router-link>
+          <img src="assets/fitmind-logo.png" class="cursor-pointer" />
         </q-toolbar-title>
       </q-toolbar>
     </q-header>
