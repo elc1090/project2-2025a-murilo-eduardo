@@ -1,5 +1,19 @@
 <template>
   <div class="flex flex-col items-center justify-center min-h-screen p-8">
+    <div>
+      <q-btn
+        class="fixed right-4 z-[50]"
+        label="Montar Treino"
+        icon="edit"
+        color="light-blue"
+        @click="() => console.log('Not implemented.')"
+        no-caps
+        push
+      >
+        <q-badge color="red" floating>{{ exerciseCount }}</q-badge>
+      </q-btn>
+      <span class="text-white text-2xl font-bold">{{ exerciseCount }}</span>
+    </div>
     <q-list>
       <q-item
         class="bg-primary rounded-xl q-pa-md q-mb-md"

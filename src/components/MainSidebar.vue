@@ -60,7 +60,7 @@ const menuItems = [
   { label: "Treinos", icon: "fitness_center", route: "/treinos" },
   // { label: "Exemplos", icon: "visibility", route: "/exemplos" },
   // { label: "Vídeos", icon: "ondemand_video", route: "/videos" },
-  { label: "Montar Treino", icon: "edit", route: "/montar-treino" },
+  // { label: "Montar Treino", icon: "edit", route: "/montar-treino" },
   // { label: "Nutrição", icon: "restaurant_menu", route: "/nutricao" },
   // { label: "Perfil", icon: "account_circle", route: "/perfil" },
 ];
