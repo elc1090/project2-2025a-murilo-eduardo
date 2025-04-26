@@ -31,10 +31,20 @@
         </q-item-section>
         <q-item-section side>
           <q-btn
+            v-if="!exerciseStorage.data.includes(item.id)"
             label="Add Treino"
             icon="bi-plus-circle-dotted"
             color="positive"
             @click="() => addExercise(item.id)"
+            no-caps
+            push
+          />
+          <q-btn
+            v-else
+            label="Remove Treino"
+            icon="bi-dash-circle"
+            color="negative"
+            @click="() => removeExercise(item.id)"
             no-caps
             push
           />
@@ -74,6 +84,11 @@ const exerciseStorage = useExerciseStorage();
 
 const addExercise = (id) => {
   exerciseStorage.save([...exerciseStorage.data, id]);
+};
+
+const removeExercise = (id) => {
+  let filtered = exerciseStorage.data.filter((exerciseId) => exerciseId != id);
+  exerciseStorage.save(filtered);
 };
 
 const exerciseCount = computed(() => {
