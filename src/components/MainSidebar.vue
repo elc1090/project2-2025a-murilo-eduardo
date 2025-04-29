@@ -20,7 +20,16 @@
             <q-icon :name="item.icon" />
           </q-item-section>
           <q-item-section>
-            <q-item-label>{{ item.label }}</q-item-label>
+            <q-item-label
+              >{{ item.label }}
+              <q-badge
+                color="warning"
+                rounded
+                v-if="item.route == '/treinos' && countStore"
+              >
+                {{ countStore }}</q-badge
+              >
+            </q-item-label>
           </q-item-section>
         </q-item>
       </q-list>
@@ -45,19 +54,25 @@ import { computed, ref } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "src/stores/auth";
+import { useExerciseStorage } from "src/stores/exerciseStorage";
 
 const drawer = ref(true);
 const $q = useQuasar();
 const router = useRouter();
 const auth = useAuthStore();
+const exerciseStorage = useExerciseStorage();
 
 const hasAuthentication = computed(() => {
   return !!auth?.authData?.token;
 });
 
+const countStore = computed(() => {
+  return exerciseStorage?.data?.length || 0;
+});
+
 const menuItems = [
-  { label: "Dashboard", icon: "dashboard", route: "/" },
-  { label: "Treinos", icon: "fitness_center", route: "/treinos" },
+  { label: "Rotinas", icon: "dashboard", route: "/" },
+  { label: "Exercicios", icon: "fitness_center", route: "/treinos" },
   // { label: "Exemplos", icon: "visibility", route: "/exemplos" },
   // { label: "Vídeos", icon: "ondemand_video", route: "/videos" },
   // { label: "Montar Treino", icon: "edit", route: "/montar-treino" },

@@ -1,195 +1,120 @@
 <template>
-  <div class="p-8">
-    <q-select
-      class="pb-4"
-      color="blue-12"
-      popup-content-class="text-black"
-      filled
-      v-model="selectedRoutine"
-      :options="routines.map((routine) => routine.name)"
-      label="Treino"
-    />
-    <q-select
-      class="pb-4"
-      color="blue-12"
-      popup-content-class="text-black"
-      filled
-      v-model="selectedDay"
-      :options="days.map((day) => day.name)"
-      label="Dia"
-    />
-    <div class="pb-4">
-      <q-btn
-        label="Montar Treino"
-        icon="edit"
-        color="light-blue"
-        @click="mount"
-        no-caps
-        push
+  <div class="p-4">
+    <h1 class="text-2xl font-bold mb-4">Escolher Exercícios</h1>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div
+        v-for="exercise in exercises"
+        :key="exercise.id"
+        class="p-4 border rounded-lg shadow hover:shadow-md transition"
       >
-        <q-badge color="red" floating>{{ exerciseCount }}</q-badge>
-      </q-btn>
-      <span class="text-white text-2xl font-bold">{{ exerciseCount }}</span>
+        <div class="flex flex-col items-center text-center">
+          <q-img
+            :src="exercise.image || 'https://placehold.co/400'"
+            alt="exercicio"
+            class="h-40 object-contain mb-2"
+          />
+          <h2 class="text-lg font-semibold">{{ exercise.name }}</h2>
+          <p class="text-sm text-gray-500 mb-2">
+            Músculos: {{ exercise.muscles }}
+          </p>
+          <q-btn
+            :color="isSaved(exercise.id) ? 'negative' : 'positive'"
+            :label="isSaved(exercise.id) ? 'Remover' : 'Adicionar'"
+            @click="toggleExercise(exercise)"
+          />
+        </div>
+      </div>
     </div>
-    <q-btn
-      label="Debug"
-      icon="edit"
-      color="negative"
-      @click="
-        async () => {
-          await deleteRoutines();
-          await createRoutine('Treino Teste');
-        }
-      "
-      no-caps
-      push
-    ></q-btn>
-  </div>
-  <div class="flex flex-col items-center justify-center min-h-screen p-8">
-    <q-list>
-      <q-item
-        class="bg-primary rounded-xl q-pa-md q-mb-md"
-        v-for="(item, idx) in exercises"
-        :key="idx"
-      >
-        <q-item-section class="text-white">
-          <q-item-label>
-            {{ item.category?.name || "-" }}
-          </q-item-label>
-          <q-item-label class="text-white flex flex-col" caption>
-            <span>
-              <b>Equipamentos:</b>
-              {{ item.equipment.map((e) => e.name).join(" | ") || "-" }}
-            </span>
-            <span v-if="item.muscles">
-              <b>Musculos:</b>
-              {{ item.muscles.map((m) => m.name).join(" | ") || "-" }}
-            </span>
-            <div v-for="desc in item.translations" :key="desc.id">
-              <span>
-                {{ desc.author_history.join(" | ") }}
-              </span>
-              <span>
-                {{ desc.description }}
-              </span>
-            </div>
-          </q-item-label>
-        </q-item-section>
-        <q-item-section side>
-          <q-btn
-            v-if="!exerciseStorage.data.includes(item.id)"
-            label="Add Treino"
-            icon="bi-plus-circle-dotted"
-            color="positive"
-            @click="() => addExercise(item.id)"
-            no-caps
-            push
-          />
-          <q-btn
-            v-else
-            label="Remove Treino"
-            icon="bi-dash-circle"
-            color="negative"
-            @click="() => removeExercise(item.id)"
-            no-caps
-            push
-          />
-        </q-item-section>
-      </q-item>
-    </q-list>
+
+    <div v-if="loading" class="text-center my-8">
+      <q-spinner color="primary" size="50px" />
+    </div>
+
+    <div v-if="isEnd" class="text-center my-4 text-gray-500">
+      Não há mais exercícios para carregar.
+    </div>
   </div>
 </template>
 <script setup>
-import { ref, watch, onMounted, computed } from "vue";
-import {
-  createRoutine,
-  createSlotEntry,
-  getRoutines,
-  deleteRoutines,
-  getSlots,
-  getDays,
-  getData,
-  getDetails,
-} from "src/services/WgerService";
-import { useQuasar } from "quasar";
+import { ref, onMounted, onUnmounted } from "vue";
+import { getExercises, getExerciseInfo } from "src/services/WgerService";
 import { useExerciseStorage } from "src/stores/exerciseStorage";
 
-const $q = useQuasar();
 const exercises = ref([]);
-
-const fetchExercises = async () => {
-  $q.loading.show();
-  try {
-    const { data } = await getData("exerciseinfo");
-    if (data) exercises.value = data.results;
-  } catch (error) {
-    console.log("🚀 ~ fetchExercises ~ error:", error);
-    $q.notify({
-      color: "negative",
-      message: error.message || "Error fetching exercises",
-      icon: "error",
-    });
-  } finally {
-    $q.loading.hide();
-  }
-};
-
-// Exercise storage related
+const loading = ref(false);
 const exerciseStorage = useExerciseStorage();
+const offset = ref(0);
+const isEnd = ref(false);
 
-const addExercise = (id) => {
-  exerciseStorage.save([...exerciseStorage.data, id]);
-};
+const isSaved = (id) => exerciseStorage.data.some((e) => e.id === id);
 
-const removeExercise = (id) => {
-  let filtered = exerciseStorage.data.filter((exerciseId) => exerciseId != id);
-  exerciseStorage.save(filtered);
-};
-
-const exerciseCount = computed(() => {
-  return exerciseStorage.data.length;
-});
-
-// Routine related
-const selectedRoutine = ref(null);
-const routines = ref([]);
-const fetchRoutines = async () => {
-  routines.value = await getRoutines();
-};
-
-// Day related
-const selectedDay = ref(null);
-const days = ref([]);
-watch(selectedRoutine, async (routineName) => {
-  if (routineName) {
-    let routineIndex = routines.value.findIndex(
-      (routine) => routineName == routine.name
-    );
-    let routine = routines.value[routineIndex];
-    days.value = await getDays(routine.id);
+const toggleExercise = (exercise) => {
+  const index = exerciseStorage.data.findIndex((e) => e.id === exercise.id);
+  if (index === -1) {
+    exerciseStorage.save([...exerciseStorage.data, exercise]);
   } else {
-    days.value = [];
+    const updated = [...exerciseStorage.data];
+    updated.splice(index, 1);
+    exerciseStorage.save(updated);
   }
-});
+};
 
-const mount = async () => {
-  let dayIndex = days.value.findIndex((day) => day.name == selectedDay.value);
-  let day = days.value[dayIndex];
+const fetchDetails = async (id) => {
+  try {
+    const response = await getExerciseInfo(id);
+    return response.data;
+  } catch (err) {
+    console.error("Erro ao buscar detalhes:", err);
+    return null;
+  }
+};
 
-  let slots = await getSlots(day.id);
+const loadExercises = async () => {
+  if (loading.value || isEnd.value) return;
+  loading.value = true;
+  try {
+    const { data } = await getExercises(offset.value);
+    if (data.results.length === 0) {
+      isEnd.value = true;
+    } else {
+      const detailed = await Promise.all(
+        data.results.map(async (ex) => {
+          const info = await fetchDetails(ex.id);
+          return {
+            id: ex.id,
+            name: ex.name,
+            image: info?.images?.[0]?.image || null,
+            muscles:
+              info?.muscles?.map((m) => m.name).join(", ") || "Desconhecido",
+          };
+        })
+      );
+      exercises.value.push(...detailed);
+      offset.value += 20;
+    }
+  } catch (error) {
+    console.error("Erro ao carregar exercícios:", error);
+  } finally {
+    loading.value = false;
+  }
+};
 
-  // There should be one and only one slot.
-  let slot = slots[0].id;
+const handleScroll = () => {
+  const scrollHeight = document.documentElement.scrollHeight;
+  const scrollTop = window.scrollY;
+  const clientHeight = document.documentElement.clientHeight;
 
-  exerciseStorage.data.forEach((exercise) => {
-    createSlotEntry(slot, exercise);
-  });
-
-  exerciseStorage.save([]);
+  if (scrollTop + clientHeight >= scrollHeight - 100) {
+    loadExercises();
+  }
 };
 
 onMounted(() => {
-  fetchExercises();
-  fetchRoutines();
+  loadExercises();
+  window.addEventListener("scroll", handleScroll);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("scroll", handleScroll);
 });
 </script>

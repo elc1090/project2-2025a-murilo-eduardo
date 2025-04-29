@@ -11,7 +11,7 @@
       </q-toolbar>
     </q-header>
 
-    <q-page-container>
+    <q-page-container class="text-dark">
       <router-view />
     </q-page-container>
   </q-layout>
