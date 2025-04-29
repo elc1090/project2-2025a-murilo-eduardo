@@ -1,6 +1,26 @@
 <template>
-  <div class="p-4">
-    <h1 class="text-2xl font-bold mb-4">Escolher Exercícios</h1>
+  <div class="flex flex-col items-center justify-center gap-3 p-4 w-full">
+    <div class="flex flex-nowrap items-center justify-between w-full">
+      <h1 class="text-2xl font-bold mb-4">Escolher Exercícios</h1>
+      <q-btn
+        label="Limpar Store"
+        color="negative"
+        icon="bi-trash"
+        @click="() => exerciseStorage.remove()"
+        push
+        dense
+      />
+    </div>
+    <q-separator class="w-full" />
+    <div class="grid grid-cols-3 gap-3 w-full">
+      <q-select
+        class="w-full"
+        v-model="filter.category"
+        :options="optCategory"
+        outlined
+        @update:model-value="() => loadExercises(true)"
+      />
+    </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
       <div
         v-for="exercise in exercises"
@@ -37,10 +57,18 @@
 </template>
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
-import { getExercises, getExerciseInfo } from "src/services/WgerService";
+import {
+  getExercises,
+  getExerciseInfo,
+  getCategory,
+} from "src/services/WgerService";
 import { useExerciseStorage } from "src/stores/exerciseStorage";
 
 const exercises = ref([]);
+const optCategory = ref([]);
+const filter = ref({
+  category: "",
+});
 const loading = ref(false);
 const exerciseStorage = useExerciseStorage();
 const offset = ref(0);
@@ -69,11 +97,17 @@ const fetchDetails = async (id) => {
   }
 };
 
-const loadExercises = async () => {
+const loadExercises = async (forceOffset = false) => {
+  if (forceOffset) {
+    exercises.value = [];
+    offset.value = 0;
+  }
   if (loading.value || isEnd.value) return;
   loading.value = true;
   try {
-    const { data } = await getExercises(offset.value);
+    const { data } = await getExercises(offset.value, {
+      category: filter.value.category && filter.value.category.value,
+    });
     if (data.results.length === 0) {
       isEnd.value = true;
     } else {
@@ -109,7 +143,19 @@ const handleScroll = () => {
   }
 };
 
+const loadCategory = async () => {
+  try {
+    const { data } = await getCategory();
+    optCategory.value = data.results.map((cat) => {
+      return { label: cat.name, value: cat.id };
+    });
+  } catch (error) {
+    console.error("🚀 ~ loadCategory ~ error:", error);
+  }
+};
+
 onMounted(() => {
+  loadCategory();
   loadExercises();
   window.addEventListener("scroll", handleScroll);
 });

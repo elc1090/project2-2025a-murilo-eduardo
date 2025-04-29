@@ -1,6 +1,15 @@
 <template>
   <div class="p-4">
-    <h1 class="text-2xl font-bold mb-6">Minhas Rotinas</h1>
+    <div class="flex flex-nowrap items-center justify-between w-full">
+      <h1 class="text-2xl font-bold mb-6">Minhas Rotinas</h1>
+      <q-btn
+        color="secondary"
+        label="Adicionar Rotina"
+        icon="bi-plus-circle-dotted"
+        push
+        @click="showDialogRoutine = true"
+      />
+    </div>
 
     <div v-if="loading" class="text-center my-8">
       <q-spinner color="primary" size="50px" />
@@ -104,25 +113,157 @@
         </div>
       </div>
     </div>
+    <q-dialog v-model="showDialogRoutine" class="overflow-hidden">
+      <q-card
+        class="q-dialog-plugin rounded-xl w-full text-dark"
+        style="max-width: 600px"
+      >
+        <q-form @submit.prevent="addRoutine">
+          <q-card-section class="flex flex-col gap-4 w-full">
+            <!-- Nome e descrição -->
+            <q-input v-model="routine.name" label="Nome" outlined />
+            <q-input v-model="routine.description" label="Descrição" outlined />
+
+            <div class="row q-col-gutter-sm">
+              <div class="col-6">
+                <q-input
+                  v-model="routine.start"
+                  label="Início"
+                  mask="####-##-##"
+                  outlined
+                >
+                  <template v-slot:append>
+                    <q-popup-proxy
+                      class="text-dark"
+                      cover
+                      transition-show="none"
+                      transition-hide="none"
+                    >
+                      <q-date v-model="routine.start" mask="YYYY-MM-DD" minimal>
+                        <div class="row items-center justify-end q-pa-sm">
+                          <q-btn
+                            v-close-popup
+                            label="Fechar"
+                            color="primary"
+                            flat
+                          />
+                        </div>
+                      </q-date>
+                    </q-popup-proxy>
+                    <q-icon name="event" class="cursor-pointer" />
+                  </template>
+                </q-input>
+              </div>
+
+              <div class="col-6">
+                <q-input
+                  v-model="routine.end"
+                  label="Fim"
+                  mask="####-##-##"
+                  outlined
+                >
+                  <template v-slot:append>
+                    <q-popup-proxy
+                      class="text-dark"
+                      cover
+                      transition-show="none"
+                      transition-hide="none"
+                    >
+                      <q-date v-model="routine.end" mask="YYYY-MM-DD" minimal>
+                        <div class="row items-center justify-end q-pa-sm">
+                          <q-btn
+                            v-close-popup
+                            label="Fechar"
+                            color="primary"
+                            flat
+                          />
+                        </div>
+                      </q-date>
+                    </q-popup-proxy>
+                    <q-icon name="event" class="cursor-pointer" />
+                  </template>
+                </q-input>
+              </div>
+            </div>
+            <q-checkbox v-model="routine.fit_in_week" label="Caber na semana" />
+          </q-card-section>
+          <q-card-section>
+            <span>Dias da Semana</span>
+            <div
+              class="flex flex-col items-center justify-start w-full"
+              v-for="day in daysOfWeek"
+              :key="day"
+            >
+              <div class="w-full">
+                <q-checkbox
+                  v-model="daysSelected[day]"
+                  :label="day"
+                  :true-value="true"
+                  :false-value="false"
+                />
+              </div>
+            </div>
+          </q-card-section>
+          <q-card-actions class="row justify-end q-gutter-sm">
+            <q-btn flat label="Cancelar" @click="showDialogRoutine = false" />
+            <q-btn type="submit" label="Salvar" color="primary" push />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 <script setup>
-import { ref, onMounted, computed } from "vue";
-import { Notify } from "quasar";
+import { ref, onMounted } from "vue";
+import { Notify, useQuasar, date } from "quasar";
 import {
   getRoutines,
   getRoutineStructure,
   createRoutineSlot,
   createRoutineSlotEntry,
+  saveData,
 } from "src/services/WgerService";
 import { useExerciseStorage } from "src/stores/exerciseStorage";
 
-const routines = ref([]);
-const loading = ref(false);
+const $q = useQuasar();
 const exerciseStorage = useExerciseStorage();
 
+const routines = ref([]);
+const loading = ref(false);
 const selectedRoutine = ref(null);
 const selectedDayId = ref(null);
+const showDialogRoutine = ref(false);
+
+const timeStamp = new Date();
+const routine = ref({
+  name: "",
+  description: "",
+  start: date.formatDate(timeStamp, "YYYY-MM-DD"),
+  end: date.formatDate(date.addToDate(timeStamp, { days: 7 }), "YYYY-MM-DD"),
+  fit_in_week: true,
+  is_public: false,
+  is_template: false,
+});
+
+const daysSelected = ref({
+  Segunda: false,
+  Terça: false,
+  Quarta: false,
+  Quinta: false,
+  Sexta: false,
+  Sábado: false,
+  Domingo: false,
+});
+
+const daysOfWeek = [
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+  "Domingo",
+];
 
 const loadRoutines = async () => {
   loading.value = true;
@@ -195,6 +336,34 @@ const addExerciseToSelectedDay = async (exercise) => {
       type: "negative",
       message: "Erro ao adicionar exercício!",
     });
+  }
+};
+
+const addRoutine = async () => {
+  $q.loading.show();
+  try {
+    const { data } = await saveData("routine", routine.value);
+    console.log("🚀 ~ addRoutine ~ data:", data);
+
+    const promiseDays = Object.entries(daysSelected.value)
+      .filter(([day, isSelected]) => isSelected)
+      .map(async ([day, isSelected]) => {
+        const dayParams = {
+          routine: data.id,
+          name: day,
+        };
+        const respDay = await saveData("day", dayParams);
+        console.log("🚀 ~ promiseDays ~ respDay:", respDay);
+      });
+
+    await Promise.all(promiseDays);
+
+    showDialogRoutine.value = false;
+    loadRoutines();
+  } catch (error) {
+    console.error("🚀 ~ addRoutine ~ error:", error);
+  } finally {
+    $q.loading.hide();
   }
 };
 
